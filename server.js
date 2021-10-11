@@ -6,6 +6,8 @@ require('dotenv').config()
 
 app.use(cors());
 app.use(express.static('public'));
+app.use(express.urlencoded({extended: true}));
+app.use(express.json());
 
 mongoose.connect(process.env.DB_URI, { useNewUrlParser: true, useUnifiedTopology: true });
 
@@ -23,7 +25,9 @@ app.post("/api/users", function(req, res) {
   const newPerson = new Person({ username: req.body.username });
   newPerson.save(function(err, data) {
     if (err) res.json("Username already taken");
-    else res.json({"username": data.username, "_id": data._id});
+    else {
+      res.json({"username": data.username, "_id": data._id});
+    }
   });
 });
 
