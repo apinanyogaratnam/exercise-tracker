@@ -13,14 +13,17 @@ app.get('/', (req, res) => {
   res.sendFile(__dirname + '/views/index.html')
 });
 
+const personSchema = new mongoose.Schema({ username: String });
+const exerciseSchema = new mongoose.Schema({ userId: String, description: String, duration: Number, date: Date });
+
+const Person = mongoose.model('Person', personSchema);
+const Exercise = mongoose.model('Exercise', exerciseSchema);
+
 app.post("/api/users", function(req, res) {
-  // req.body hosts is equal to the JSON post sent from the user
-  // This works because of our body parsing middleware
-  var user = req.body;
-  console.log(user);
-  // We then add the user to the database
-  db.User.create(user).then(function(dbUser) {
-    // We have access to the new user document as dbUser
+  const newPerson = new Person({ username: req.body.username });
+  newPerson.save(function(err, data) {
+    res.json({"username": data.username, "_id": data._id});
+  });
 });
 
 
