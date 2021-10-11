@@ -31,6 +31,13 @@ app.post("/api/users", function(req, res) {
   });
 });
 
+app.get("/api/users", function(req, res) {
+  Person.find({}, function(err, data) {
+    if (err) res.json(err);
+    else res.json(data);
+  });
+});
+
 app.post("/api/exercise/add", function(req, res) {
   const {userId, description, duration, date} = req.body;
 
