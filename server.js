@@ -19,15 +19,44 @@ const exerciseSchema = new mongoose.Schema({ userId: String, description: String
 const Person = mongoose.model('Person', personSchema);
 const Exercise = mongoose.model('Exercise', exerciseSchema);
 
-app.post("/api/users/new-user", function(req, res) {
+app.post("/api/users", function(req, res) {
   const newPerson = new Person({ username: req.body.username });
   newPerson.save(function(err, data) {
-    res.json({"username": data.username, "_id": data._id});
+    if (err) res.json("Username already taken");
+    else res.json({"username": data.username, "_id": data._id});
   });
 });
 
 app.post("/api/exercise/add", function(req, res) {
+  const {userId, description, duration, date} = req.body;
 
+  Person.findById(userId, function(err, data) {
+    if (!data) res.send("Unknown userId");
+    else {
+      const username = data.username;
+      const newExercise = new Exercise({ userId, description, duration, date });
+      newExercise.save(function(err, data) {
+        res.json({userId, username, description, duration, date});
+      });
+    }
+  });
+});
+
+app.get("/api/exercise/log", function(req, res) {
+  const {userId, from, to, limit} = req.query;
+  Person.findById(userId, function(err, data) {
+    if (!data) res.send("Unknown userId");
+    else {
+      const username = data.username;
+      Exercise.find({userId, date: {$gte: from, $lte: to}}, function(err, data) {
+        if (err) res.send("Error");
+        else {
+          if (limit) data = data.slice(0, limit);
+          res.json({userId, username, from, to, limit, count: data.length, log: data});
+        }
+      });
+    }
+  });
 });
 
 const listener = app.listen(process.env.PORT || 3000, () => {
