@@ -1,83 +1,166 @@
-const express = require('express')
-const app = express()
-const cors = require('cors')
+const express = require('express');
+const app = express();
+const cors = require('cors');
+require('dotenv').config();
 const mongoose = require('mongoose');
-require('dotenv').config()
+
+const ERR_USER_NOTFUND = {error: 'user not found'};
+
+// mongoose.set('useFindAndModify', false);
 
 app.use(cors());
-app.use(express.static('public'));
-app.use(express.urlencoded({extended: true}));
-app.use(express.json());
+app.use("/public", express.static(__dirname + '/public'));
+app.use(express.urlencoded({ extended: false }));
 
-mongoose.connect(process.env.DB_URI, { useNewUrlParser: true, useUnifiedTopology: true });
 
-app.get('/', (req, res) => {
-  res.sendFile(__dirname + '/views/index.html')
+// log for debugging
+/*
+app.use((req, res, next) => {
+  console.log(`LOG: ${req.method} ${req.path}`);
+  // if (req.method === 'POST') {
+  //   console.log('  body:', req.body);
+  // } else {
+  //   console.log(' params:', req.params);
+  // }
+  next();
 });
+*/
+// ---------------------- MongoDB ------------------------------
+mongoose.connect(process.env.DB_URI, { useNewUrlParser: true, useUnifiedTopology: true})
+  .catch(err => {
+    console.error('Cannot connect to mongoDB', err);
+  });
 
-const personSchema = new mongoose.Schema({ username: String });
-const exerciseSchema = new mongoose.Schema({ userId: String, description: String, duration: Number, date: Date });
+const defaultDate = () => new Date().toISOString().slice(0, 10);
 
-const Person = mongoose.model('Person', personSchema);
-const Exercise = mongoose.model('Exercise', exerciseSchema);
+const userSchema = mongoose.Schema(
+  {
+    username: { type: String, required: true, unique: false },
+    exercices: [
+      {
+        description: { type: String },
+        duration: { type: Number },
+        date: { type: String, required: false }
+      }
+    ]
+  }
+);
+const User = mongoose.model('Users', userSchema);
 
-app.post("/api/users", function(req, res) {
-  const newPerson = new Person({ username: req.body.username });
-  newPerson.save(function(err, data) {
-    if (err) res.json("Username already taken");
-    else {
-      res.json({"username": data.username, "_id": data._id});
+// create and save user (OK)
+function addUser(req, res) {
+  let username = req.body.username;
+  if (!username || username.length === 0) {
+    res.json({ error: "Invalid username" });
+  }
+  const user = new User({ username: username });
+  user.save(function (err, newUser) {
+    if (err) {
+      return console.log('addUser() error saving new user:', err);
+    }
+    res.json({ username: newUser.username, _id: newUser._id });
+  });
+}
+
+// get all users (OK)
+function getAllUsers(req, res) {
+  User.find()
+    .select('username _id')
+    .exec(function (err, userList) {
+      if (err) {
+        return console.log('getAllUsers() error:', err);
+      }
+      res.json(userList);
+    });
+}
+/*
+You can POST to /api/users/:_id/exercises with form data 'description', 'duration', and optionally 'date'. 
+If no date is supplied, the current date will be used. 
+The response returned will be the user object with the exercise fields added.
+*/
+function addExercise(req, res) {
+  const userId = req.params.userId || req.body.userId; // userId from URL or from body
+  const exObj = { 
+    description: req.body.description,
+    duration: +req.body.duration,
+    date: req.body.date || defaultDate()
+  }; // exrecise object to add
+  User.findByIdAndUpdate(
+    userId, // find user by _id
+    {$push: { exercices: exObj } }, // add exObj to exercices[]
+    {new: true},
+    function (err, updatedUser) {
+      if(err) {
+        return console.log('update error:',err);
+      }
+      let returnObj = {
+        username: updatedUser.username,
+        description: exObj.description,
+        duration: exObj.duration,
+       _id: userId,
+        date: new Date(exObj.date).toDateString()
+      };
+      res.json(returnObj);
+    }
+  );
+}
+
+// get Logs
+function getLog(req, res) {
+  let userId = req.params["_id"];
+  let dFrom = req.query.from || '0000-00-00';
+  let dTo = req.query.to || '9999-99-99';
+  let limit = +req.query.limit || 10000;
+  User.findOne({ _id: userId }, function (err, user) {
+    if (err) {
+      return console.log('getLog() error:', err);
+    }
+    try {
+      let e1 = user.exercices.filter(e => e.date >= dFrom && e.date <= dTo);
+      let e2 = e1.map(e => (
+          {
+            description: e.description, 
+            duration: e.duration, 
+            date: e.date //new Date(e.date).toDateString()}
+          }
+          ));
+      let ex = user.exercices.filter(e => e.date >= dFrom && e.date <= dTo)
+        .map(e => (
+          {
+            description: e.description, 
+            duration: e.duration, 
+            date: e.date //new Date(e.date).toDateString()}
+          }
+          ))
+        .slice(0,limit);
+      let logObj = {};
+      logObj.count = ex.length;
+      logObj._id = user._id;
+      logObj.username = user.username;
+      logObj.log = ex;
+      res.json(logObj);
+    } catch (e) {
+      console.log(e);
+      res.json(ERR_USER_NOTFUND);
     }
   });
-});
+}
 
-app.get("/api/users", function(req, res) {
-  Person.find({}, function(err, data) {
-    if (err) res.json(err);
-    else res.json(data);
-  });
-});
+// ------------------- main API ------------------------
+app.get('/', (req, res) => res.sendFile(__dirname + '/views/index.html'));
+// в index.html и в задании разные URL, так что оба варианта
+app.post("/api/users", addUser); // в задании
+app.post("/api/exercise/new-user", addUser); // в html
 
-app.post("/api/users/:_id/exercises", function(req, res) {
-  const newExercise = new Exercise({ userId: req.params._id, description: req.body.description, duration: req.body.duration, date: req.body.date });
-  newExercise.save(function(err, data) {
-    if (err) res.json(err);
-    else res.json(data);
-  });
-});
+app.get ("/api/users", getAllUsers); // в задании
+app.get ("/api/exercise/users", getAllUsers); // на всякий случай
 
-app.post("/api/exercise/add", function(req, res) {
-  const {userId, description, duration, date} = req.body;
+app.post("/api/exercise/add", addExercise); // не работает, т.к. приходит говно в виде POST /api/users/607acd7ff7b903021aade681/exercises
+app.all("/api/users/:userId/exercises", addExercise); // для post() параметры не работают - х.з. как сделать
 
-  Person.findById(userId, function(err, data) {
-    if (!data) res.send("Unknown userId");
-    else {
-      const username = data.username;
-      const newExercise = new Exercise({ userId, description, duration, date });
-      newExercise.save(function(err, data) {
-        res.json({userId, username, description, duration, date});
-      });
-    }
-  });
-});
-
-app.get("/api/exercise/log", function(req, res) {
-  const {userId, from, to, limit} = req.query;
-  Person.findById(userId, function(err, data) {
-    if (!data) res.send("Unknown userId");
-    else {
-      const username = data.username;
-      Exercise.find({userId, date: {$gte: from, $lte: to}}, function(err, data) {
-        if (err) res.send("Error");
-        else {
-          if (limit) data = data.slice(0, limit);
-          res.json({userId, username, from, to, limit, count: data.length, log: data});
-        }
-      });
-    }
-  });
-});
-
+app.get("/api/exercises/:userId/log", getLog);
+app.get("/api/users/:_id/logs", getLog);
+// ------------------- Listener ------------------------
 const listener = app.listen(process.env.PORT || 3000, () => {
-  console.log('Your app is listening on port ' + listener.address().port)
-})
+  console.log('Your app is listening on port ' + listener.address().port);
+});
