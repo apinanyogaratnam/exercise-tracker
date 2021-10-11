@@ -9,7 +9,15 @@ app.get('/', (req, res) => {
   res.sendFile(__dirname + '/views/index.html')
 });
 
-
+app.post("/api/users", function(req, res) {
+  // req.body hosts is equal to the JSON post sent from the user
+  // This works because of our body parsing middleware
+  var user = req.body;
+  console.log(user);
+  // We then add the user to the database
+  db.User.create(user).then(function(dbUser) {
+    // We have access to the new user document as dbUser
+});
 
 
 
