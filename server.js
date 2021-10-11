@@ -19,14 +19,16 @@ const exerciseSchema = new mongoose.Schema({ userId: String, description: String
 const Person = mongoose.model('Person', personSchema);
 const Exercise = mongoose.model('Exercise', exerciseSchema);
 
-app.post("/api/users", function(req, res) {
+app.post("/api/users/new-user", function(req, res) {
   const newPerson = new Person({ username: req.body.username });
   newPerson.save(function(err, data) {
     res.json({"username": data.username, "_id": data._id});
   });
 });
 
+app.post("/api/exercise/add", function(req, res) {
 
+});
 
 const listener = app.listen(process.env.PORT || 3000, () => {
   console.log('Your app is listening on port ' + listener.address().port)
