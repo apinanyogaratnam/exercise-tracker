@@ -38,6 +38,14 @@ app.get("/api/users", function(req, res) {
   });
 });
 
+app.post("/api/users/:_id/exercises", function(req, res) {
+  const newExercise = new Exercise({ userId: req.params._id, description: req.body.description, duration: req.body.duration, date: req.body.date });
+  newExercise.save(function(err, data) {
+    if (err) res.json(err);
+    else res.json(data);
+  });
+});
+
 app.post("/api/exercise/add", function(req, res) {
   const {userId, description, duration, date} = req.body;
 
