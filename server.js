@@ -121,7 +121,7 @@ function getLog(req, res) {
           {
             description: e.description, 
             duration: e.duration, 
-            date: e.date //new Date(e.date).toDateString()}
+            date: new Date(e.date).toDateString()
           }
           ));
       let ex = user.exercices.filter(e => e.date >= dFrom && e.date <= dTo)
@@ -129,7 +129,7 @@ function getLog(req, res) {
           {
             description: e.description, 
             duration: e.duration, 
-            date: e.date //new Date(e.date).toDateString()}
+            date: new Date(e.date).toDateString()
           }
           ))
         .slice(0,limit);
