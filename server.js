@@ -93,6 +93,7 @@ function addExercise(req, res) {
       if(err) {
         return console.log('update error:',err);
       }
+      console.log(new Date(exObj.date).toDateString());
       let returnObj = {
         username: updatedUser.username,
         description: exObj.description,
