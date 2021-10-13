@@ -141,7 +141,6 @@ function getLog(req, res) {
       console.log(logObj);
       res.json(logObj);
     } catch (e) {
-      console.log("error");
       res.json(ERR_USER_NOTFUND);
     }
   });
