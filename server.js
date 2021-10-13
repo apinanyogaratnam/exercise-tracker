@@ -93,7 +93,6 @@ function addExercise(req, res) {
       if(err) {
         return console.log('update error:',err);
       }
-      console.log(new Date(exObj.date).toDateString());
       let returnObj = {
         username: updatedUser.username,
         description: exObj.description,
@@ -117,15 +116,15 @@ function getLog(req, res) {
       return console.log('getLog() error:', err);
     }
     try {
-      let e1 = user.exercices.filter(e => e.date >= dFrom && e.date <= dTo);
-      let e2 = e1.map(e => (
-          {
-            description: e.description, 
-            duration: e.duration, 
-            date: new Date(e.date).toDateString()
-          }
-          ));
-      let ex = user.exercices.filter(e => e.date >= dFrom && e.date <= dTo)
+    //   let e1 = user.exercices.filter(e => e.date >= dFrom && e.date <= dTo);
+    //   let e2 = e1.map(e => (
+    //       {
+    //         description: e.description, 
+    //         duration: e.duration, 
+    //         date: new Date(e.date).toDateString()
+    //       }
+    //       ));
+      let ex = user.exercices
         .map(e => (
           {
             description: e.description, 
@@ -139,29 +138,29 @@ function getLog(req, res) {
       logObj._id = user._id;
       logObj.username = user.username;
       logObj.log = ex;
+      console.log(logObj);
       res.json(logObj);
     } catch (e) {
-      console.log(e);
+      console.log("error");
       res.json(ERR_USER_NOTFUND);
     }
   });
 }
 
-// ------------------- main API ------------------------
+
 app.get('/', (req, res) => res.sendFile(__dirname + '/views/index.html'));
-// в index.html и в задании разные URL, так что оба варианта
-app.post("/api/users", addUser); // в задании
-app.post("/api/exercise/new-user", addUser); // в html
+app.post("/api/users", addUser);
+app.post("/api/exercise/new-user", addUser);
 
-app.get ("/api/users", getAllUsers); // в задании
-app.get ("/api/exercise/users", getAllUsers); // на всякий случай
+app.get ("/api/users", getAllUsers);
+app.get ("/api/exercise/users", getAllUsers);
 
-app.post("/api/exercise/add", addExercise); // не работает, т.к. приходит говно в виде POST /api/users/607acd7ff7b903021aade681/exercises
-app.all("/api/users/:userId/exercises", addExercise); // для post() параметры не работают - х.з. как сделать
+app.post("/api/exercise/add", addExercise);
+app.all("/api/users/:userId/exercises", addExercise);
 
 app.get("/api/exercises/:userId/log", getLog);
 app.get("/api/users/:_id/logs", getLog);
-// ------------------- Listener ------------------------
+
 const listener = app.listen(process.env.PORT || 3000, () => {
   console.log('Your app is listening on port ' + listener.address().port);
 });
